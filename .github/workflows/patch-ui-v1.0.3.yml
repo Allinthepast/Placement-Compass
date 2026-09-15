@@ -1,0 +1,96 @@
+name: Patch Placement Compass UI v1.0.3
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/patch-ui-v1.0.3.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch index and service worker
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+
+          def rep(old, new, label):
+              global s
+              if old not in s:
+                  raise SystemExit(f'Could not find patch target: {label}')
+              s = s.replace(old, new, 1)
+
+          rep("const VERSION='1.0.2'", "const VERSION='1.0.3'", 'version')
+
+          rep(
+              ".day.BankHoliday{border-left-color:#d66a6a}.day-num",
+              ".day.BankHoliday{border-left-color:#d66a6a}.day.saved-placement{border:2px solid #36a478;background:linear-gradient(180deg,#f4fcf8,#e5f6ee);box-shadow:0 0 0 1px rgba(54,164,120,.10),inset 0 0 0 1px rgba(255,255,255,.75)}.week-day.saved-placement{outline:2px solid #36a478;outline-offset:-2px}.day-num",
+              'saved placement styling'
+          )
+
+          rep(
+              "status=r?.plan||'',note=r?.activity||r?.specialNote||rs?.label||'';cells.push(`<div class=\"day ${status.replaceAll(' ','')} ${weekend?'weekend':''}\"",
+              "status=r?.plan||'',saved=Number(r?.placementCredit||0)>0,note=r?.activity||r?.specialNote||rs?.label||'';cells.push(`<div class=\"day ${status.replaceAll(' ','')} ${saved?'saved-placement':''} ${weekend?'weekend':''}\"",
+              'calendar saved class'
+          )
+
+          rep(
+              "<div class=\"week-day ${r.plan.replaceAll(' ','')}\" data-date=\"${r.date}\">",
+              "<div class=\"week-day ${r.plan.replaceAll(' ','')} ${Number(r.placementCredit||0)>0?'saved-placement':''}\" data-date=\"${r.date}\">",
+              'plan saved class'
+          )
+
+          rep(
+              "function switchView(v){document.querySelectorAll('.view').forEach(x=>x.classList.toggle('active',x.id===v));document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.view===v));scrollTo({top:0,behavior:'smooth'})}",
+              "function activeView(){return document.querySelector('.view.active')?.id||'dashboard'}function switchView(v,fromHistory=false){document.querySelectorAll('.view').forEach(x=>x.classList.toggle('active',x.id===v));document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.view===v));if(!fromHistory){let h=history.state||{};if(h.pcView!==v||h.pcModal)history.pushState({pcView:v,pcModal:false},'')}scrollTo({top:0,behavior:'smooth'})}function openModalHistory(){if(!history.state?.pcModal)history.pushState({pcView:activeView(),pcModal:true},'')}function closeModal(fromHistory=false){backdrop.classList.add('hidden');if(!fromHistory&&history.state?.pcModal)history.back()}function settleModalHistory(){if(history.state?.pcModal)history.replaceState({pcView:activeView(),pcModal:false},'')}",
+              'navigation helpers'
+          )
+
+          rep(
+              "backdrop.classList.remove('hidden');if(rs)use1.onclick=()=>mrh.value=1;saveNo.onclick=()=>saveModal(k,false);saveDay.onclick=()=>saveModal(k,r.plan==='Placement')",
+              "backdrop.classList.remove('hidden');openModalHistory();if(rs)use1.onclick=()=>mrh.value=1;mplan.onchange=()=>{saveDay.textContent=mplan.value==='Placement'?'Save + count placement day':'Save day'};saveNo.onclick=()=>saveModal(k,false);saveDay.onclick=()=>saveModal(k,mplan.value==='Placement')",
+              'modal open/history/save behavior'
+          )
+
+          rep(
+              "r.updatedAt=new Date().toISOString();backdrop.classList.add('hidden');persist();toast('Day saved')",
+              "r.updatedAt=new Date().toISOString();backdrop.classList.add('hidden');settleModalHistory();persist();toast('Day saved')",
+              'modal save history settlement'
+          )
+
+          rep(
+              "document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>switchView(t.dataset.view));quickLog.onclick=()=>openModal(nearest());todayBtn.onclick=()=>{cursor=new Date();switchView('calendar');calendarRender()};close.onclick=()=>backdrop.classList.add('hidden');backdrop.onclick=e=>{if(e.target===backdrop)backdrop.classList.add('hidden')};document.addEventListener('keydown',e=>{if(e.key==='Escape')backdrop.classList.add('hidden')});if('serviceWorker'in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(()=>{});renderAll()",
+              "document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>switchView(t.dataset.view));quickLog.onclick=()=>openModal(nearest());todayBtn.onclick=()=>{cursor=new Date();switchView('calendar');calendarRender()};document.getElementById('close').onclick=e=>{e.preventDefault();closeModal()};backdrop.onclick=e=>{if(e.target===backdrop)closeModal()};document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!backdrop.classList.contains('hidden'))closeModal()});window.addEventListener('popstate',e=>{let st=e.state||{};if(!backdrop.classList.contains('hidden'))closeModal(true);if(st.pcView&&document.getElementById(st.pcView))switchView(st.pcView,true)});history.replaceState({pcView:activeView(),pcModal:false},'');if('serviceWorker'in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(()=>{});renderAll()",
+              'close button and phone-back navigation'
+          )
+
+          p.write_text(s, encoding='utf-8')
+
+          sw = Path('sw.js')
+          w = sw.read_text(encoding='utf-8')
+          if "placement-compass-v1.0.2" not in w:
+              raise SystemExit('Could not find service worker cache version')
+          sw.write_text(w.replace('placement-compass-v1.0.2','placement-compass-v1.0.3',1), encoding='utf-8')
+          PY
+
+      - name: Commit patch
+        shell: bash
+        run: |
+          git config user.name "Placement Compass updater"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html sw.js
+          git commit -m "Fix modal, saved-day styling and mobile back navigation"
+          git push
