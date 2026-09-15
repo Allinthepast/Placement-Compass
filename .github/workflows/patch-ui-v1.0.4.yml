@@ -1,0 +1,78 @@
+name: Patch Placement Compass UI v1.0.4
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/patch-ui-v1.0.4.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch activity options and dashboard navigation
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+
+          def rep(old, new, label):
+              global s
+              if old not in s:
+                  raise SystemExit(f'Could not find patch target: {label}')
+              s = s.replace(old, new, 1)
+
+          rep("const VERSION='1.0.3'", "const VERSION='1.0.4'", 'version')
+
+          rep(
+              ".kpi{min-height:145px;position:relative;overflow:hidden}.kpi .label",
+              ".kpi{min-height:145px;position:relative;overflow:hidden}.dashboard-link{cursor:pointer}.dashboard-link:focus-visible{outline:3px solid var(--teal);outline-offset:3px}.kpi .label",
+              'dashboard clickable styling'
+          )
+
+          rep(
+              '<div class="card kpi"><div class="label">Completed placement days</div>',
+              '<div class="card kpi dashboard-link" id="completedDaysCard" role="button" tabindex="0" aria-label="Open calendar"><div class="label">Completed placement days</div>',
+              'completed-days card'
+          )
+
+          rep(
+              "['Casework','Consultation','Assessment','Intervention','Report writing','Supervision','Training / CPD','Service development','Research','Administration','University','Study']",
+              "['Casework','EHCP visit','Consultation','Assessment','Intervention','Report writing','Supervision','Training / CPD','Service development','Research','Administration','University','Study']",
+              'EHCP activity option'
+          )
+
+          rep(
+              "rather than pretending every session is a full day.</div></div></div>`}function calendarRender()",
+              "rather than pretending every session is a full day.</div></div></div>`;let c=document.getElementById('completedDaysCard');if(c){c.onclick=()=>switchView('calendar');c.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();switchView('calendar')}}}}function calendarRender()",
+              'dashboard card navigation'
+          )
+
+          p.write_text(s, encoding='utf-8')
+
+          sw = Path('sw.js')
+          w = sw.read_text(encoding='utf-8')
+          if "placement-compass-v1.0.3" not in w:
+              raise SystemExit('Could not find service worker cache version')
+          sw.write_text(w.replace('placement-compass-v1.0.3','placement-compass-v1.0.4',1), encoding='utf-8')
+          PY
+
+      - name: Commit patch
+        shell: bash
+        run: |
+          git config user.name "Placement Compass updater"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html sw.js
+          git commit -m "Add EHCP visit option and dashboard calendar shortcut"
+          git push
