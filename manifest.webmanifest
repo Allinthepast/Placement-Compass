@@ -1,0 +1,13 @@
+{
+  "name": "Placement Compass · DAEP Year 3",
+  "short_name": "Placement Compass",
+  "description": "Personal Year 3 placement planner, activity log and research-hours tracker.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f7fa",
+  "theme_color": "#10263e",
+  "icons": [
+    {"src":"icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}
+  ]
+}
