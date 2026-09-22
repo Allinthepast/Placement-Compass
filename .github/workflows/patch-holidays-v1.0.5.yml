@@ -82,3 +82,5 @@ jobs:
           git add index.html sw.js
           git commit -m "Match leave to Derby holidays with one placement day per break"
           git push
+
+# trigger rerun
