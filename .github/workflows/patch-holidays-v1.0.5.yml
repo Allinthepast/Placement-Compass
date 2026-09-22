@@ -1,0 +1,84 @@
+name: Patch Placement Compass holiday plan v1.0.5
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/patch-holidays-v1.0.5.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch Derby holiday leave and catch-up placement days
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+
+          def rep(old, new, label):
+              global s
+              if old not in s:
+                  raise SystemExit(f'Could not find patch target: {label}')
+              s = s.replace(old, new, 1)
+
+          rep("const VERSION='1.0.4'", "const VERSION='1.0.5'", 'version')
+
+          rep(
+              "const HB=[['2026-12-21','2027-01-01','DAEP Christmas holiday'],['2027-03-29','2027-04-09','DAEP Easter holiday']],BH=",
+              "const HB=[['2026-10-26','2026-10-30','Derby City autumn half-term'],['2026-12-21','2027-01-01','Derby City Christmas holiday'],['2027-02-15','2027-02-19','Derby City February half-term'],['2027-03-26','2027-04-09','Derby City Easter holiday'],['2027-05-31','2027-06-04','Derby City Whit half-term'],['2027-07-27','2027-07-31','Derby City summer holiday']],FP={'2026-10-26':'Holiday catch-up / placement day','2026-12-21':'Holiday catch-up / placement day','2027-02-15':'Holiday catch-up / placement day','2027-03-30':'Holiday catch-up / placement day','2027-06-01':'Holiday catch-up / placement day','2027-07-27':'Holiday catch-up / placement day'},BH=",
+              'Derby holiday blocks and flex placement days'
+          )
+
+          rep(
+              "function special(x){for(let[a,b,l]of UB)if(x>=a&&x<=b)return['University',l];if(UD[x])return['University',UD[x]];for(let[a,b,l]of HB)if(x>=a&&x<=b)return['Holiday',l];if(BH[x])return['Bank Holiday',BH[x]];return null}",
+              "function special(x){for(let[a,b,l]of UB)if(x>=a&&x<=b)return['University',l];if(UD[x])return['University',UD[x]];if(FP[x])return['Placement',FP[x]];if(BH[x])return['Bank Holiday',BH[x]];for(let[a,b,l]of HB)if(x>=a&&x<=b)return['Holiday',l];return null}",
+              'special-day priority'
+          )
+
+          rep(
+              "let first=iso(mon(d(settings.start))),count=0;Object.keys(g).sort().forEach",
+              "let first=iso(mon(d(settings.start))),count=Object.values(days).filter(r=>r.plan==='Placement').length;Object.keys(g).sort().forEach",
+              'count prebooked holiday placement days'
+          )
+
+          rep(
+              "function load(){try{let x=JSON.parse(localStorage.getItem(KEY));if(x&&x.days&&x.settings)return x}catch{}return defaults()}",
+              "function migrate(x){if(x.version===VERSION)return x;let fresh=autoplan(base(),x.settings);Object.keys(fresh).forEach(k=>{let old=x.days[k];if(!old)return;fresh[k].activity=old.activity||'';fresh[k].category=old.category||'';fresh[k].placementCredit=Number(old.placementCredit||0);fresh[k].researchHours=Number(old.researchHours||0);fresh[k].researchNote=old.researchNote||'';fresh[k].completed=!!old.completed;fresh[k].updatedAt=old.updatedAt||null;if(old.updatedAt){fresh[k].plan=old.plan||fresh[k].plan;fresh[k].specialNote=old.specialNote||fresh[k].specialNote}});let f=fresh['2026-09-04'];if(f&&x.days['2026-09-04'])f.specialNote=x.days['2026-09-04'].specialNote||'Actual first placement day.';x.days=fresh;x.version=VERSION;x.customResearch=x.customResearch||[];return x}function load(){try{let x=JSON.parse(localStorage.getItem(KEY));if(x&&x.days&&x.settings){x=migrate(x);localStorage.setItem(KEY,JSON.stringify(x));return x}}catch{}return defaults()}",
+              'automatic plan migration'
+          )
+
+          rep(
+              "<div class=\"summary-row\"><span>Placement start</span><strong>4 Sep 2026</strong></div>",
+              "<div class=\"summary-row\"><span>Placement start</span><strong>4 Sep 2026</strong></div><div class=\"summary-row\"><span>Derby holiday breaks</span><strong>1 placement day each</strong></div>",
+              'dashboard holiday rule'
+          )
+
+          p.write_text(s, encoding='utf-8')
+
+          sw = Path('sw.js')
+          w = sw.read_text(encoding='utf-8')
+          if "placement-compass-v1.0.4" not in w:
+              raise SystemExit('Could not find service worker cache version')
+          sw.write_text(w.replace('placement-compass-v1.0.4','placement-compass-v1.0.5',1), encoding='utf-8')
+          PY
+
+      - name: Commit patch
+        shell: bash
+        run: |
+          git config user.name "Placement Compass updater"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html sw.js
+          git commit -m "Match leave to Derby holidays with one placement day per break"
+          git push
