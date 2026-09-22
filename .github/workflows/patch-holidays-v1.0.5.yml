@@ -36,8 +36,8 @@ jobs:
           rep("const VERSION='1.0.4'", "const VERSION='1.0.5'", 'version')
 
           rep(
-              "const HB=[['2026-12-21','2027-01-01','DAEP Christmas holiday'],['2027-03-29','2027-04-09','DAEP Easter holiday']],BH=",
-              "const HB=[['2026-10-26','2026-10-30','Derby City autumn half-term'],['2026-12-21','2027-01-01','Derby City Christmas holiday'],['2027-02-15','2027-02-19','Derby City February half-term'],['2027-03-26','2027-04-09','Derby City Easter holiday'],['2027-05-31','2027-06-04','Derby City Whit half-term'],['2027-07-27','2027-07-31','Derby City summer holiday']],FP={'2026-10-26':'Holiday catch-up / placement day','2026-12-21':'Holiday catch-up / placement day','2027-02-15':'Holiday catch-up / placement day','2027-03-30':'Holiday catch-up / placement day','2027-06-01':'Holiday catch-up / placement day','2027-07-27':'Holiday catch-up / placement day'},BH=",
+              "HB=[['2026-12-21','2027-01-01','DAEP Christmas holiday'],['2027-03-29','2027-04-09','DAEP Easter holiday']],BH=",
+              "HB=[['2026-10-26','2026-10-30','Derby City autumn half-term'],['2026-12-21','2027-01-01','Derby City Christmas holiday'],['2027-02-15','2027-02-19','Derby City February half-term'],['2027-03-26','2027-04-09','Derby City Easter holiday'],['2027-05-31','2027-06-04','Derby City Whit half-term'],['2027-07-27','2027-07-31','Derby City summer holiday']],FP={'2026-10-26':'Holiday catch-up / placement day','2026-12-21':'Holiday catch-up / placement day','2027-02-15':'Holiday catch-up / placement day','2027-03-30':'Holiday catch-up / placement day','2027-06-01':'Holiday catch-up / placement day','2027-07-27':'Holiday catch-up / placement day'},BH=",
               'Derby holiday blocks and flex placement days'
           )
 
@@ -84,3 +84,5 @@ jobs:
           git push
 
 # trigger rerun
+
+# corrected chained const target
