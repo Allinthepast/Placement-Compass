@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Placement Compass · Sign in</title>
+<style>:root{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#f5f7fa;color:#18212b}*{box-sizing:border-box}body{margin:0;min-height:100vh;padding:22px;display:grid;place-items:center}main{width:min(100%,460px);padding:24px;background:#fff;border:1px solid #dde4ec;border-radius:18px;box-shadow:0 12px 24px #10263e17}h1{font-size:1.5rem;color:#10263e;margin:0 0 8px}p{color:#475569;line-height:1.45}label{display:block;margin:15px 0 6px;font-size:.92rem;font-weight:700}input{width:100%;padding:12px;font-size:16px;border:1px solid #b8c4d1;border-radius:10px}button{width:100%;background:#10263e;border:0;border-radius:10px;color:white;font-size:1rem;font-weight:700;padding:13px;margin:20px 0 12px;cursor:pointer}button:disabled{opacity:.5}#msg{background:#e7efff;border-radius:9px;padding:12px;min-height:46px;color:#123b63;line-height:1.4;white-space:pre-wrap}#msg.error{background:#fff0f0;color:#8e2d2d}#msg.good{background:#e2f7ea;color:#18633c}a{color:#145a83}.small{font-size:.85rem}</style></head><body><main>
+<h1>Placement Compass sign-in</h1>
+<p>This is a separate sign-in screen to show clear feedback. Use the <strong>same Compass email and password as your phone</strong>.</p>
+<form id="form"><label for="email">Compass email</label><input type="email" id="email" autocomplete="email" required><label for="password">Compass password</label><input id="password" type="password" autocomplete="current-password" required><button id="go" type="submit">Sign in to Compass</button></form>
+<div id="msg" role="status" aria-live="polite">Loading the sign-in connection…</div>
+<p class="small">After signing in, you'll return to Compass. On your computer, choose <strong>Use cloud copy on this device</strong>. Don't upload the computer's empty starting plan.</p>
+<p class="small"><a href="./">Return to Compass</a> · <a href="./connect.html">Account creation</a></p>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" onerror="document.getElementById('msg').textContent='Sign-in library could not load. Please check your internet connection.'"></script>
+<script>
+(()=>{'use strict';
+const PROJECT='https://usyebuiyatafpnenbgsr.supabase.co',KEY='sb_publishable_235pT3PtEzEjpBxoPFtYOA_JtqILEVM';
+const f=document.getElementById('form'),btn=document.getElementById('go'),message=document.getElementById('msg');
+function show(text,type){message.textContent=text;message.className=type||'';}
+let db=null;
+try{if(!window.supabase||!window.supabase.createClient)throw Error('The sign-in library could not load. Check your internet connection.');db=window.supabase.createClient(PROJECT,KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});show('Ready. Enter the same credentials that worked on your phone.');}catch(e){show(e.message,'error');}
+f.addEventListener('submit',async e=>{
+ e.preventDefault();
+ if(!db){show('Sign-in connection unavailable. Check your internet connection and reload this page.','error');return;}
+ if(btn.disabled)return;
+ const email=document.getElementById('email').value.trim(),password=document.getElementById('password').value;
+ if(!email||!password){show('Please enter both your Compass email and password.','error');return;}
+ btn.disabled=true;show('Checking your Compass account…');
+ try{
+ const response=await Promise.race([
+ db.auth.signInWithPassword({email,password}),
+ new Promise((_,reject)=>setTimeout(()=>reject(Error('Connection timed out after 20 seconds.')),20000))
+ ]);
+ if(response.error)throw response.error;
+ if(!response.data||!response.data.session)throw Error('Supabase did not return a sign-in session.');
+ show('Signed in successfully! Returning to Compass…','good');
+ window.location.replace('./');
+ }catch(error){
+ let detail=error.message||String(error);
+ if(/invalid login credentials/i.test(detail))detail='Supabase rejected those credentials. Check that the email matches the one shown in Compass on your phone, and use the Compass password you created (not your Supabase dashboard password).';
+ show('Sign-in failed: '+detail,'error');
+ }finally{btn.disabled=false;}
+});
+})();
+</script></body></html>
