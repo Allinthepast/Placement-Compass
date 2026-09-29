@@ -11,7 +11,7 @@ function el(){return document.getElementById('syncArea');}
 function bridge(){return window.CompassBridge;}
 function copy(x){return JSON.parse(JSON.stringify(x));}
 function eq(a,b){return JSON.stringify(a)===JSON.stringify(b);}
-function profile(s){return {settings:s.settings,custom_research:s.customResearch||[],version:s.version||'1.0.9'};}
+function profile(s){return {settings:s.settings,custom_research:s.customResearch||[],version:s.version||'1.0.10'};}
 function getBase(){try{return JSON.parse(localStorage.getItem(BASE+user.id));}catch(e){return null;}}
 function saveBase(x){localStorage.setItem(BASE+user.id,JSON.stringify(x));}
 function backup(reason){var s=bridge().getState();localStorage.setItem('placementCompass.safety.'+reason+'.'+Date.now(),JSON.stringify(s));}
@@ -25,7 +25,7 @@ function render(){
  '<div class="form-grid"><div class="field"><label>Email</label><input id="syncEmail" type="email" autocomplete="email" placeholder="Your email"></div>'+
  '<div class="field"><label>Password</label><input id="syncPass" type="password" autocomplete="current-password" placeholder="At least 6 characters"></div></div>'+
  '<div class="modal-actions" style="justify-content:flex-start;flex-wrap:wrap"><a class="btn primary" style="display:inline-block;text-decoration:none" id="syncSignup" href="./connect.html">Create account ↗</a><button type="button" class="btn ghost" id="syncLogin">Sign in to existing account</button></div>'+
- '<p class="small muted">Create account opens a separate setup page, then return here to sign in. Your local records stay on this device until you choose to upload them.</p>';
+ '<p class="small muted">Having trouble signing in? <a href="./login.html">Use the separate sign-in page ↗</a> to see the exact error. Your local records stay on this device until you choose to upload them.</p>';
  root.querySelector('#syncLogin').onclick=function(){auth(false);};
  return;
  }
@@ -136,7 +136,7 @@ async function joinCloud(){
  var s=copy(bridge().getState());
  backup('before-cloud-download');
  Object.keys(r.days).forEach(function(k){s.days[k]=r.days[k];});
- s.settings=r.p.settings;s.customResearch=r.p.custom_research;s.version='1.0.9';
+ s.settings=r.p.settings;s.customResearch=r.p.custom_research;s.version='1.0.10';
  bridge().setState(s);
  saveBase(linkedState(s));localStorage.setItem(LINK,user.id);linked=true;cloudExists=true;
  subscribe();note('Connected · cloud copy downloaded.');
