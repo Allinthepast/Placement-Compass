@@ -27,7 +27,7 @@ const KEY='sb_publishable_235pT3PtEzEjpBxoPFtYOA_JtqILEVM';
 const f=document.querySelector('#setup'),b=document.querySelector('#go'),m=document.querySelector('#msg');
 f.addEventListener('submit',async e=>{
  e.preventDefault();if(b.disabled)return;
- const email=f.email.value.trim(),password=f.password.value;
+ const email=document.getElementById('email').value.trim(),password=document.getElementById('password').value;
  if(!email||password.length<6){m.textContent='Enter a valid email and password of at least six characters.';return;}
  b.disabled=true;b.textContent='Sending request…';
  m.textContent='Contacting Supabase. This may take several seconds.';
@@ -42,7 +42,7 @@ f.addEventListener('submit',async e=>{
  const data=await res.json().catch(()=>({}));
  if(!res.ok)throw Error(data.msg||data.message||data.error_description||data.error||('Supabase returned HTTP '+res.status));
  m.textContent='Account request accepted. Check your inbox (and junk folder) for a Supabase confirmation email if required. Then return to Compass, sign in, and upload your PHONE as the starting copy.';
- f.password.value='';
+ document.getElementById('password').value='';
  }catch(err){
  m.textContent=err.name==='AbortError'?'Request timed out. Check your connection and retry.':
  'Account creation failed: '+(err.message||String(err))+'. Your placement data is unchanged.';
