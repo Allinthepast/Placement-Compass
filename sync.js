@@ -220,5 +220,6 @@ function init(){
  window.addEventListener('online',schedule);
  document.addEventListener('visibilitychange',function(){if(!document.hidden)schedule();});
 }
-window.CompassSync={init:init,render:render,schedule:schedule};
+function pause(){linked=false;conflicts=[];if(user)localStorage.removeItem(LINK);if(channel&&db){db.removeChannel(channel);channel=null;}note('Cloud sync disconnected on this device. Existing cloud records were not deleted.');}
+window.CompassSync={init:init,render:render,schedule:schedule,pause:pause};
 })();
