@@ -18,12 +18,12 @@ function backup(reason){var s=bridge().getState();localStorage.setItem('placemen
 function note(x){status=x;render();}
 function render(){
  var root=el();if(!root)return;
- if(!db){root.innerHTML='<div class="muted">Cloud library unavailable. The local app still works; reconnect to the internet and reopen Compass.</div>';return;}
+ if(!db){root.innerHTML='<h2>Phone + computer sync</h2><p class="muted">'+safe(status)+'</p><p class="small muted">Your placement log is still stored safely on this device. Try reconnecting to the internet, then fully close and reopen Compass.</p>';return;}
  if(!user){
- root.innerHTML='<h2>Phone + computer sync</h2><p class="muted">Sign in with the SAME Compass account on both devices. No placement data is uploaded until you choose the starting copy.</p>'+
+ root.innerHTML='<h2>Phone + computer sync</h2><p class="muted"><strong>First time?</strong> Choose Create account, then verify your email if prompted. Once registered, sign in with the SAME account on both devices. No placement data is uploaded until you choose the starting copy.</p>'+
  '<div class="form-grid"><div class="field"><label>Email</label><input id="syncEmail" type="email" autocomplete="email" placeholder="Your email"></div>'+
  '<div class="field"><label>Password</label><input id="syncPass" type="password" autocomplete="current-password" placeholder="At least 6 characters"></div></div>'+
- '<div class="modal-actions" style="justify-content:flex-start;flex-wrap:wrap"><button class="btn primary" id="syncLogin">Sign in</button><button class="btn ghost" id="syncSignup">Create account</button></div>'+
+ '<div class="modal-actions" style="justify-content:flex-start;flex-wrap:wrap"><button class="btn primary" id="syncSignup">Create account</button><button class="btn ghost" id="syncLogin">Sign in to existing account</button></div>'+
  '<p class="small muted" id="syncMsg">'+safe(status)+'</p>';
  root.querySelector('#syncLogin').onclick=function(){auth(false);};
  root.querySelector('#syncSignup').onclick=function(){auth(true);};
@@ -48,19 +48,29 @@ function render(){
  on('syncLogout',function(){if(db)db.auth.signOut();});
 }
 function safe(x){return String(x||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+var busyAuth=false;
 async function auth(signup){
+ if(busyAuth)return;
  var e=document.getElementById('syncEmail'),p=document.getElementById('syncPass');
  var email=(e&&e.value||'').trim(),password=p&&p.value||'';
- if(!email||password.length<6){note('Enter an email and a password of at least six characters.');return;}
+ function feedback(message){status=message;var m=document.getElementById('syncMsg');if(m)m.textContent=message;else render();}
+ if(!email||password.length<6){feedback('Please enter a valid email and password (at least 6 characters). Choose Create account if this is your first time.');return;}
+ busyAuth=true;
+ ['syncLogin','syncSignup'].forEach(function(id){var b=document.getElementById(id);if(b)b.disabled=true;});
  try{
- note('Contacting Supabase…');
- var result=signup?
- await db.auth.signUp({email:email,password:password,options:{emailRedirectTo:location.origin+location.pathname}}):
- await db.auth.signInWithPassword({email:email,password:password});
+ feedback(signup?'Creating account… please wait.':'Signing in… please wait.');
+ var attempt=signup?
+ db.auth.signUp({email:email,password:password,options:{emailRedirectTo:location.origin+location.pathname}}):
+ db.auth.signInWithPassword({email:email,password:password});
+ var result=await Promise.race([attempt,new Promise(function(_,reject){
+ setTimeout(function(){reject(new Error('The request took too long. Please check your connection and try again.'));},20000);
+ })]);
  if(result.error)throw result.error;
- note(signup&&!result.data.session?'Account created. Check your inbox to confirm your email, then sign in.':'Signed in. Checking your cloud copy…');
- if(result.data.session)activate();
- }catch(e){note('Sign-in: '+e.message);}
+ if(signup&&!result.data.session){feedback('Account request submitted. Check your inbox (and junk folder) for the confirmation email. After confirming, return here and choose Sign in.');}
+ else if(result.data.session){feedback('Signed in. Checking the cloud copy…');await activate();}
+ else{feedback('No session returned. If this is your first time, create an account and confirm your email before signing in.');}
+ }catch(ex){feedback('Could not '+(signup?'create account':'sign in')+': '+(ex.message||String(ex)));}
+ finally{busyAuth=false;['syncLogin','syncSignup'].forEach(function(id){var b=document.getElementById(id);if(b)b.disabled=false;});}
 }
 async function remote(){
  var p=await db.from('compass_profiles').select('settings,custom_research,version').eq('user_id',user.id).maybeSingle();
@@ -77,7 +87,7 @@ async function activate(){
  user=session.data.session&&session.data.session.user||null;
  linked=false;cloudExists=false;conflicts=[];
  if(channel){db.removeChannel(channel);channel=null;}
- if(!user){note('Signed out. Local data remains available.');return;}
+ if(!user){note('Not signed in. First time? Choose Create account. Your local records remain available.');return;}
  try{
  note('Checking cloud data…');
  var p=await db.from('compass_profiles').select('user_id').eq('user_id',user.id).maybeSingle();
@@ -212,8 +222,8 @@ async function resolve(){
  finally{working=false;schedule();}
 }
 function init(){
- if(!window.supabase||!window.supabase.createClient){render();return;}
- db=window.supabase.createClient(URL,KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+ if(!window.supabase||!window.supabase.createClient){status='Cloud sign-in library did not load. Check your internet connection and reopen the app.';render();return;}
+ try{db=window.supabase.createClient(URL,KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});}catch(ex){status='Cloud sign-in could not initialise: '+ex.message;render();return;}
  db.auth.onAuthStateChange(function(event){if(event==='SIGNED_IN'||event==='SIGNED_OUT')setTimeout(activate,0);});
  activate();
  setInterval(function(){if(linked)run();},20000);
