@@ -11,7 +11,7 @@ function el(){return document.getElementById('syncArea');}
 function bridge(){return window.CompassBridge;}
 function copy(x){return JSON.parse(JSON.stringify(x));}
 function eq(a,b){return JSON.stringify(a)===JSON.stringify(b);}
-function profile(s){return {settings:s.settings,custom_research:s.customResearch||[],version:s.version||'1.0.7'};}
+function profile(s){return {settings:s.settings,custom_research:s.customResearch||[],version:s.version||'1.0.8'};}
 function getBase(){try{return JSON.parse(localStorage.getItem(BASE+user.id));}catch(e){return null;}}
 function saveBase(x){localStorage.setItem(BASE+user.id,JSON.stringify(x));}
 function backup(reason){var s=bridge().getState();localStorage.setItem('placementCompass.safety.'+reason+'.'+Date.now(),JSON.stringify(s));}
@@ -136,7 +136,7 @@ async function joinCloud(){
  var s=copy(bridge().getState());
  backup('before-cloud-download');
  Object.keys(r.days).forEach(function(k){s.days[k]=r.days[k];});
- s.settings=r.p.settings;s.customResearch=r.p.custom_research;s.version='1.0.7';
+ s.settings=r.p.settings;s.customResearch=r.p.custom_research;s.version='1.0.8';
  bridge().setState(s);
  saveBase(linkedState(s));localStorage.setItem(LINK,user.id);linked=true;cloudExists=true;
  subscribe();note('Connected · cloud copy downloaded.');
